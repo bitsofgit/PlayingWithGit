@@ -19,7 +19,12 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-var dataDirectory = Path.Combine(builder.Environment.ContentRootPath, "Data");
+// Defaults to Data/ next to the app for local dev. On Azure App Service, set
+// the "DataDirectory" app setting to a path under the persistent /home share
+// (e.g. /home/data on Linux, D:\home\data on Windows) — the app's own content
+// folder can be mounted read-only there, so JSON storage must live outside it.
+var dataDirectory = builder.Configuration["DataDirectory"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "Data");
 builder.Services.AddSingleton(new JsonPageStore(dataDirectory));
 
 var app = builder.Build();

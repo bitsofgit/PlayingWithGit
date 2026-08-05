@@ -60,10 +60,36 @@ Two pages are currently registered: `likes` and `learn`.
 `{page}` must be `likes` or `learn` — add new pages by extending the
 `validPages` set in `Program.cs` and the `PAGES` array in `frontend/src/types.ts`.
 
+## Deploying to Azure App Service
+
+The plan is to merge the frontend build into the API project (serve the Vite
+output as static files from `wwwroot`) so this ships as a single App Service
+deployable — not done yet, still two apps today.
+
+JSON storage stays as-is on App Service, with one required setting: App
+Service's own content folder (`wwwroot`) can be mounted **read-only** in the
+default Linux deploy mode, so the data directory must live outside it, on the
+persistent `/home` share instead. Set this app setting before deploying:
+
+| App setting     | Value (Linux)  | Value (Windows)     |
+|------------------|----------------|----------------------|
+| `DataDirectory`  | `/home/data`   | `D:\home\data`       |
+
+`Program.cs` reads `DataDirectory` from configuration and falls back to the
+local `Data/` folder when it's unset, so local dev needs no changes.
+
+Also worth doing once deployed:
+- Turn on **App Service Backup** (Basic tier+) — the JSON files are your only
+  copy of the data, App Service doesn't back them up on its own.
+- Keep the plan at a single instance (no autoscale) — the file lock in
+  `JsonPageStore` only guards against concurrent writes within one process,
+  not across multiple scaled-out instances.
+
 ## Notes
 
-- This repo is scoped to a single user, so the JSON-file storage has no
-  concurrent-user concerns beyond a simple in-process lock.
+- JSON-file storage is intentional even with multiple users logging in — the
+  per-user data footprint is small enough that a database isn't warranted yet.
+  Revisit if that changes.
 - Auth was intentionally left out of this first pass — the plan is to add it
-  as a proper middle-tier concern in the .NET API when needed, without
-  changing how the frontend talks to it.
+  as a proper middle-tier concern in the .NET API (likely Microsoft Entra
+  External ID) when needed, without changing how the frontend talks to it.
