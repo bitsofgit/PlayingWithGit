@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { Item, ItemInput, PageConfig } from '../types'
+import type { Item, ItemInput, ListPageConfig } from '../types'
 import * as api from '../api'
 import { ItemForm } from './ItemForm'
 import { ItemList } from './ItemList'
 
-export function PageView({ page }: { page: PageConfig }) {
+export function PageView({ page }: { page: ListPageConfig }) {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

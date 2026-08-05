@@ -5,18 +5,31 @@ A minimalist, one-stop app for things you like and things you want to learn.
 ## Stack
 
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4. No router, no UI kit,
-  no state library — just `fetch` and React state. Two tabs (Likes / Learn), a
-  form to add items, inline edit/delete.
-- **Backend**: ASP.NET Core (.NET 8) minimal API, no database. Each page is
-  persisted as its own JSON file under `backend/Curio.Api/Data/` (`likes.json`,
-  `learn.json`). This is meant to be a stepping stone — swap `JsonPageStore` for
-  a real database or add auth in the same project later without changing the
-  frontend's API contract.
+  no state library — just `fetch` and React state. A home page with a tile per
+  page; each tile opens either a JSON-backed list view or a fully custom page.
+- **Backend**: ASP.NET Core (.NET 8) minimal API, no database. Each list page
+  (Likes, Learn) is persisted as its own JSON file under `backend/Curio.Api/Data/`.
+  This is meant to be a stepping stone — swap `JsonPageStore` for a real database
+  or add auth in the same project later without changing the frontend's API contract.
+
+## Pages
+
+- **Likes** / **Learn** — JSON-backed lists (`PageConfig.kind === 'list'` in
+  `frontend/src/types.ts`). Add a new one by adding an entry to `PAGES` and
+  extending `validPages` in `Program.cs`.
+- **Solar System** (`kind === 'custom'`) — a zoomable, live solar system view.
+  Positions and orbital speeds are computed client-side via Kepler's equation
+  from the standard published heliocentric orbital elements (valid 1800–2050,
+  `frontend/src/solarSystem/elements.ts`) — no backend or external API call.
+  Distance and size use independent compressed scales so the whole system fits
+  on screen at once; see the in-app caption for the accuracy caveat. Custom
+  pages like this one are wired up per page key in `App.tsx`.
 
 ## Project structure
 
 ```
 frontend/   React + Vite + TS + Tailwind SPA
+  src/solarSystem/   orbital mechanics (elements, Kepler solver, scales, zoom/pan)
 backend/    ASP.NET Core Web API (Curio.Api)
 ```
 

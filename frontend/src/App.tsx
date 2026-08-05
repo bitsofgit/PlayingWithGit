@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { PAGES } from './types'
 import type { PageKey } from './types'
 import { PageView } from './components/PageView'
+import { SolarSystem } from './components/SolarSystem'
 import { Home } from './components/Home'
 
 function App() {
@@ -26,7 +27,9 @@ function App() {
           </button>
         )}
       </header>
-      {page ? <PageView page={page} /> : <Home onSelect={setActive} />}
+      {page === null && <Home onSelect={setActive} />}
+      {page?.kind === 'list' && <PageView page={page} />}
+      {page?.kind === 'custom' && page.key === 'solar-system' && <SolarSystem />}
     </div>
   )
 }

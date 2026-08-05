@@ -8,8 +8,9 @@ export function Home({ onSelect }: { onSelect: (page: PageKey) => void }) {
 
   useEffect(() => {
     let cancelled = false
+    const listPages = PAGES.filter((p) => p.kind === 'list')
     Promise.all(
-      PAGES.map((p) =>
+      listPages.map((p) =>
         api
           .listItems(p.key)
           .then((items) => [p.key, items.length] as const)
@@ -27,7 +28,12 @@ export function Home({ onSelect }: { onSelect: (page: PageKey) => void }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       {PAGES.map((p) => {
-        const count = counts[p.key]
+        const subtitle =
+          p.kind === 'list'
+            ? counts[p.key] === undefined
+              ? ' '
+              : `${counts[p.key]} item${counts[p.key] === 1 ? '' : 's'}`
+            : p.tagline
         return (
           <button
             key={p.key}
@@ -35,9 +41,7 @@ export function Home({ onSelect }: { onSelect: (page: PageKey) => void }) {
             className="flex flex-col items-start gap-1 rounded-lg border border-[var(--border)] p-4 text-left transition-colors hover:border-[var(--text)]"
           >
             <span className="text-base font-medium">{p.label}</span>
-            <span className="text-sm text-[var(--text-muted)]">
-              {count === undefined ? ' ' : `${count} item${count === 1 ? '' : 's'}`}
-            </span>
+            <span className="text-sm text-[var(--text-muted)]">{subtitle}</span>
           </button>
         )
       })}
