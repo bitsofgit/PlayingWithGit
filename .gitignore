@@ -6,6 +6,11 @@ frontend/*.local
 # .NET / backend
 backend/**/bin/
 backend/**/obj/
+backend/**/publish/
+
+# frontend build output copied into wwwroot at publish time
+backend/Curio.Api/wwwroot/*
+!backend/Curio.Api/wwwroot/.gitkeep
 
 # Editor / OS
 .vscode/

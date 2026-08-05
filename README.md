@@ -60,30 +60,74 @@ Two pages are currently registered: `likes` and `learn`.
 `{page}` must be `likes` or `learn` — add new pages by extending the
 `validPages` set in `Program.cs` and the `PAGES` array in `frontend/src/types.ts`.
 
-## Deploying to Azure App Service
+## Deploying to Azure App Service (Windows)
 
-The plan is to merge the frontend build into the API project (serve the Vite
-output as static files from `wwwroot`) so this ships as a single App Service
-deployable — not done yet, still two apps today.
+This ships as a single deployable: `Program.cs` serves the built frontend
+(`frontend/dist`, copied into `backend/Curio.Api/wwwroot`) as static files,
+with the API mapped under `/api/*` and everything else falling back to
+`index.html`. `.github/workflows/azure-deploy.yml` builds and deploys this
+automatically on every push to `main`.
 
-JSON storage stays as-is on App Service, with one required setting: App
-Service's own content folder (`wwwroot`) can be mounted **read-only** in the
-default Linux deploy mode, so the data directory must live outside it, on the
-persistent `/home` share instead. Set this app setting before deploying:
+### 1. Create the Azure resources
 
-| App setting     | Value (Linux)  | Value (Windows)     |
-|------------------|----------------|----------------------|
-| `DataDirectory`  | `/home/data`   | `D:\home\data`       |
+Run these with the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
+(`az login` first) — adjust names/region as you like, but keep them consistent
+with what you use below:
 
-`Program.cs` reads `DataDirectory` from configuration and falls back to the
-local `Data/` folder when it's unset, so local dev needs no changes.
+```bash
+az group create --name curio-rg --location eastus
 
-Also worth doing once deployed:
-- Turn on **App Service Backup** (Basic tier+) — the JSON files are your only
-  copy of the data, App Service doesn't back them up on its own.
+# Windows App Service Plan — Basic B1 is enough for a small multi-user app
+az appservice plan create \
+  --name curio-plan \
+  --resource-group curio-rg \
+  --location eastus \
+  --sku B1
+
+# Windows Web App running the in-process .NET 8 runtime
+az webapp create \
+  --name curio-app \
+  --resource-group curio-rg \
+  --plan curio-plan \
+  --runtime "dotnet:8"
+
+# Point JSON storage at the persistent D:\home share, outside wwwroot
+az webapp config appsettings set \
+  --name curio-app \
+  --resource-group curio-rg \
+  --settings DataDirectory="D:\home\data"
+```
+
+`curio-app` must be a globally unique name — if it's taken, pick another and
+update `AZURE_WEBAPP_NAME` in `.github/workflows/azure-deploy.yml` to match.
+The exact `--runtime` string can shift between CLI versions — if it's
+rejected, run `az webapp list-runtimes --os windows` to see what your CLI
+currently accepts and swap it in.
+
+### 2. Wire up GitHub Actions deploys
+
+```bash
+az webapp deployment list-publishing-profiles \
+  --name curio-app \
+  --resource-group curio-rg \
+  --xml
+```
+
+Copy the XML output into a new GitHub Actions secret named
+`AZURE_WEBAPP_PUBLISH_PROFILE` (repo Settings → Secrets and variables →
+Actions). Once that's set, pushing to `main` builds the frontend, publishes
+the API, and deploys both together.
+
+### 3. Once deployed
+
+- Turn on **App Service Backup** (Settings → Backups, Basic tier+) — the JSON
+  files under `D:\home\data` are your only copy of the data, App Service
+  doesn't back them up on its own.
 - Keep the plan at a single instance (no autoscale) — the file lock in
   `JsonPageStore` only guards against concurrent writes within one process,
   not across multiple scaled-out instances.
+- `DataDirectory` is read from configuration with a local `Data/` folder
+  fallback, so nothing changes for local dev.
 
 ## Notes
 

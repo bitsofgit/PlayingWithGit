@@ -1,0 +1,47 @@
+name: Deploy to Azure App Service (Windows)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: curio-app # must match the Web App name you create in Azure
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy frontend build into wwwroot
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path backend/Curio.Api/wwwroot | Out-Null
+          Copy-Item -Path frontend/dist/* -Destination backend/Curio.Api/wwwroot -Recurse -Force
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish backend
+        run: dotnet publish backend/Curio.Api/Curio.Api.csproj -c Release -o publish_output
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish_output

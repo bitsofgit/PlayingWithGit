@@ -31,6 +31,12 @@ var app = builder.Build();
 
 app.UseCors("frontend");
 
+// Serves the built frontend (frontend/dist copied into wwwroot at publish
+// time — see azure-deploy.yml). Local dev still runs `npm run dev`
+// separately against the Vite proxy, so wwwroot is normally empty here.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 var pages = app.MapGroup("/api/pages/{page}")
     .AddEndpointFilter(async (context, next) =>
     {
@@ -70,5 +76,10 @@ pages.MapDelete("/items/{id}", async (string page, string id, JsonPageStore stor
     var deleted = await store.DeleteAsync(page, id);
     return deleted ? Results.NoContent() : Results.NotFound();
 });
+
+// Unknown /api/* routes should 404, not fall through to the SPA shell —
+// registered before the catch-all below since it's the more specific pattern.
+app.MapFallback("/api/{**rest}", () => Results.NotFound());
+app.MapFallbackToFile("index.html");
 
 app.Run();
